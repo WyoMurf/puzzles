@@ -1,0 +1,17 @@
+#!/bin/bash
+
+## highly inefficient, but for each possible word generated,
+## grep thru dict, looking for it. uuse egrep to make sure
+## we look for a complete match, not a match of the pattern
+## in some perhaps bigger word.
+
+## to speed this up, we could build a trie representing dict,
+## and search in it, instead,  for each word.
+
+## or, better yet, maybe, we could enter all the words in dict into
+## a big hash table and search for them in there. That might go a
+## lot faster
+
+for i in `wordscram $1`; do
+egrep \^$i\$ /usr/share/dict/words
+done
