@@ -1,6 +1,6 @@
 
 /* 
-   Copyright (C) 2014 Steve Murphy, Cody, WY
+   Copyright (C) 2018 Steve Murphy, Cody, WY
    All Rights Reserved.
 
    Permission to use this code via GNU GPLv2
@@ -29,6 +29,8 @@ int dict_file_size;
    with a null as we go thru it, entering each word into the table.
 */
 
+/* give me the jumbled letters of two words, and give me the length of the longest word.
+I'll see if I can find all the words that long that use those characters. */
 
 void read_dict(void)
 {
@@ -69,7 +71,7 @@ void read_dict(void)
 }
 
 
-copy_set(int *from, int* to)
+void copy_set(int *from, int* to)
 {
 	int i;
 	for(i=0;i<20;i++)
@@ -91,10 +93,11 @@ int in_set(int *set, int ind, int val)
 
 int match_count = 0;
 
-void permute( int *set, int len, char *vals, int lev, int *currset, int print_it)
+int permute( int *set, int len, char *vals, int lev, int *currset, int print_it)
 {
 	int i;
-	match_count=0;
+	int retval=0;
+	
 	if( lev == len )
 	{
 		if(print_it)
@@ -118,10 +121,11 @@ void permute( int *set, int len, char *vals, int lev, int *currset, int print_it
 			if( ast_hashtab_lookup(dict, buf1) )
 			{
 				match_count++;
-				printf("   Found:   %s in the dictionary!\n", buf1);
+				printf("   Found:    %s\n", buf1);
+				retval=1;
 			}
 		}
-		return;
+		return retval;
 	}
 	for(i=0;i<len;i++)
 	{
@@ -131,35 +135,113 @@ void permute( int *set, int len, char *vals, int lev, int *currset, int print_it
 			permute( set, len, vals, lev+1, currset, print_it );
 		}
 	}
+	return retval;
 }
 
-main(int argc,char **argv)
+void rmcharfromset(char *vals, char x) {
+	char *p = strchr(vals,x);
+	if(!p) {
+		printf("What the--- ?? How do remove %c from %s\n", x, vals);
+		return;
+	} else {
+		while(*p) {
+			*p = *(p+1);
+			p++;
+		}
+		*p = 0;
+	}
+}
+
+int twowords(char *vals, int len)
+{
+	int set[20], currset[20];
+	struct ast_hashtab_iter *it;
+	char *sptr;
+	int i;
+	int matched =0;
+	int unmatched = 0;
+	int wronglen = 0;
+
+	/* the initial set */
+	for(i=0;i<len;i++)
+	{
+		set[i] = i;
+	}
+
+	it = ast_hashtab_start_traversal(dict);
+        while( (sptr = ast_hashtab_next(it)) ) {
+		char buf3[40];
+		char *p;
+		int tlen = strlen(sptr);
+		int i;
+		if(tlen != len) {
+			wronglen++;
+			continue; // skip all the words not exactly "len" chars long!
+		}
+		strcpy(buf3, vals);
+		for(i=0; i<tlen; i++) {
+			char y;
+			y=sptr[i];
+			p = strchr(buf3,y);
+			if(p) {
+				rmcharfromset(buf3,y);
+			} else {
+				break; // this ain't the word
+			}
+
+		}
+		if( p ) {
+			char buf4[200];
+			int len7;
+			int pret;
+			printf("    Match: Word=%s remainder=%s\n", sptr, buf3);
+			/* the initial set */
+			len7 = strlen(buf3);
+			for(i=0;i<len7;i++)
+			{
+				set[i] = i;
+			}
+			pret = permute(set, len7, buf3, 0, currset, 0);
+			if (pret) {
+			}
+			matched++;
+		} else {
+			unmatched++;
+		}
+	}
+}
+
+
+int main(int argc,char **argv)
 {
 	int len;
+	int wlen2;
 	int set[20], currset[20];
-	char vals[20];
+	char vals[40];
+	struct ast_hashtab_iter *it;
+	char *sptr;
 	int i;
+	int matched =0;
+	int unmatched = 0;
+	int wronglen = 0;
 	
-	if( argc < 2 )
+	if( argc < 4 )
 	{
-		printf("permute <word>\n");
+		printf("threeword <scrambleOfTwoWords> <longestwordlen> <nextlongestwordlen>\n");
 		exit(10);
 	}
-	
-	len = strlen(argv[1]);
-	if( len > 19 ) /* really 10 or 11 is getting impractically big! 40 million possibilities at 11! */
-	{
-		printf("String too long\n");
-		exit(10);
-	}
+
+		
 	
 	/* find all the n-digit numbers that have each digit mentioned only once. */
 	/* all the numbers including only the numbers 1-n; */
 	printf("Reading %s...\n", DICT);
 	read_dict();
 	printf("Done, wasn't that quick?\n");
-	
+
 	strcpy(vals,argv[1]);
+	len = atoi(argv[2]);
+	wlen2 = atoi(argv[3]);
 
 	/* the initial set */
 	for(i=0;i<len;i++)
@@ -168,9 +250,48 @@ main(int argc,char **argv)
 	}
 
 	printf("Searching... (Note: if you repeat the same letter more than once in a word, expect multiple matches!)\n");
-	
-	permute(set, len, vals, 0, currset, 0);
-	
-	printf("Found %d matches in the dictionary!\n", match_count);
+
+	it = ast_hashtab_start_traversal(dict);
+        while( (sptr = ast_hashtab_next(it)) ) {
+		char buf3[40];
+		char *p;
+		int tlen = strlen(sptr);
+		int i;
+		if(tlen != len) {
+			wronglen++;
+			continue; // skip all the words not exactly "len" chars long!
+		}
+		strcpy(buf3, vals);
+		for(i=0; i<tlen; i++) {
+			char y;
+			y=sptr[i];
+			p = strchr(buf3,y);
+			if(p) { 
+				rmcharfromset(buf3,y);
+			} else {
+				break; // this ain't the word 
+			}
+
+		}
+		if( p ) {
+			char buf4[200];
+			char buf5[200];
+			int len7;
+			printf("============================================================\n");
+			printf("Match: Word=%s remainder=%s\n", sptr, buf3); 
+			twowords(buf3, wlen2);
+			/* the initial set */
+			len7 = strlen(buf3);
+			for(i=0;i<len7;i++)
+			{
+				set[i] = i;
+			}
+			permute(set, len7, buf3, 0, currset, 0);
+			matched++;
+		} else {
+			unmatched++;
+		}
+	}
+	printf ("Matched: %d\nUnmatched: %d\nWrong Length: %d\n", matched, unmatched, wronglen);
 	
 }

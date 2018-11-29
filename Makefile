@@ -1,10 +1,22 @@
 
 
 
-exes : wordscram dominoe permute rock permute2 sudoku_solver
+exes : wordscram dominoe permute rock permute2 sudoku_solver twowords threewords
 
 wordscram : wordscram.o hashtab.o
 	gcc -g -o wordscram wordscram.o hashtab.o -lpthread
+
+twowords : twowords.o hashtab.o
+	gcc -g -o twowords twowords.o hashtab.o -lpthread
+
+twowords.o : twowords.c
+	gcc -g -c twowords.c
+
+threewords : threewords.o hashtab.o
+	gcc -g -o threewords threewords.o hashtab.o -lpthread
+
+threewords.o : threewords.c
+	gcc -g -c threewords.c
 
 dominoe : dominoe.o
 	gcc -g -o dominoe dominoe.o
